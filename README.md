@@ -1,42 +1,56 @@
-VPROFILE PROJECT SETUP
-Prerequisite
+PROJECT SETUP
+-------------
+Prerequisite:
+
 1. Oracle VM Virtualbox
 2. Vagrant
 3. Vagrant plugins
 a. vagrant plugin install vagrant-hostmanager
 b. vagrant plugin install vagrant-vbguest
-4. Git bash or equivalent editor
-VM SETUP
+4. Git bash or equivalent editor 
+
+VM SETUP:
+----------
 1. Clone source code.
 2. Cd into the repository.
 3. Switch to the local-setup branch.
 4. cd into vagrant/Manual_provisioning.
-Bring up vm’s
+
+Bring up vm’s:
+-------------
 $ vagrant up
+
 NOTE: Bringing up all the vm’s may take a long time based on various factors.
+
 If vm setup stops in the middle run “vagrant up” command again.
 INFO: All the vm’s hostname and /etc/hosts file entries will be automatically updated.
-PROVISIONING
+
+PROVISIONING:
+-------------
 Services
 1. Nginx:
-Web Service
+    Web Service
 2. Tomcat
-Application Server
+    Application Server
 3. RabbitMQ
-Broker/Queuing Agent
+    Broker/Queuing Agent
 4. Memcache
-DB Caching
+    DB Caching
 5. ElasticSearch
-Indexing/Search service
+    Indexing/Search service
 6. MySQL
-SQL Database
-Setup should be done in below mentioned order
+    SQL Database
+
+Setup should be done in below mentioned order:
+----------------------------------------------
 1. MySQL (Database SVC)
 2. Memcache (DB Caching SVC)
 3. RabbitMQ (Broker/Queue SVC)
 4. Tomcat (Application SVC)
 5. Nginx (Web SVC)
-MYSQL Setup
+
+MYSQL Setup:
+------------
 Login to the db vm
 $ vagrant ssh db01
 Verify Hosts entry, if entries missing update the it with IP and hostnames
@@ -103,7 +117,9 @@ Starting the firewall and allowing the mariadb to access from port no. 3306
 # firewall-cmd --zone=public --add-port=3306/tcp --permanent
 # firewall-cmd --reload
 # systemctl restart mariadb
-MEMCACHE SETUP
+
+MEMCACHE SETUP:
+---------------
 Install, start & enable memcache on port 11211
 #yum install epel-release -y
 #yum install memcached -y
@@ -112,13 +128,17 @@ Install, start & enable memcache on port 11211
 #systemctl status memcached
 #memcached -p 11211 -U 11111 -u memcached -d
 Starting the firewall and allowing the port 11211 to access memcache
+
+# if you are using system firewall configuration steps
 # systemctl enable firewalld
 # systemctl start firewalld
 # systemctl status firewalld
 # firewall-cmd --add-port=11211/tcp --permanent
 # firewall-cmd --reload
 # memcached -p 11211 -U 11111 -u memcache -d
-RABBITMQ SETUP
+
+RABBITMQ SETUP:
+---------------
 Login to the RabbitMQ vm
 $ vagrant ssh rmq01
 Verify Hosts entry, if entries missing update the it with IP and hostnames
@@ -152,7 +172,10 @@ Enabling the firewall and allowing port 25672 to access the rabbitmq permanently
 # firewall-cmd --get-active-zones
 # firewall-cmd --zone=public --add-port=25672/tcp --permanent
 # firewall-cmd --reload
-TOMCAT SETUP
+
+
+TOMCAT SETUP:
+-------------
 Login to the tomcat vm
 $ vagrant ssh app01
 Verify Hosts entry, if entries missing update the it with IP and hostnames
@@ -175,41 +198,47 @@ Copy data to tomcat home dir
 # cp -r /tmp/apache-tomcat-8.5.37/* /usr/local/tomcat8/
 Make tomcat user owner of tomcat home dir
 # chown -R tomcat.tomcat /usr/local/tomcat8
-Setup systemd for tomcat
-Update file with following content.
-vi /etc/systemd/system/tomcat.service
-[Unit]
-Description=Tomcat
-After=network.target
-[Service]
-User=tomcat
-WorkingDirectory=/usr/local/tomcat8
-Environment=JRE_HOME=/usr/lib/jvm/jre
-Environment=JAVA_HOME=/usr/lib/jvm/jre
-Environment=CATALINA_HOME=/usr/local/tomcat8
-Environment=CATALINE_BASE=/usr/local/tomcat8
-ExecStart=/usr/local/tomcat8/bin/catalina.sh run
-ExecStop=/usr/local/tomcat8/bin/shutdown.sh
-SyslogIdentifier=tomcat-%i
-[Install]
-WantedBy=multi-user.target
-# systemctl daemon-reload
-# systemctl start tomcat
-# systemctl enable tomcat
-Enabling the firewall and allowing port 8080 to access the tomcat
+
+Setup systemd for tomcat:
+    Update file with following content.
+    vi /etc/systemd/system/tomcat.service
+    [Unit]
+    Description=Tomcat
+    After=network.target
+    [Service]
+    User=tomcat
+    WorkingDirectory=/usr/local/tomcat8
+    Environment=JRE_HOME=/usr/lib/jvm/jre
+    Environment=JAVA_HOME=/usr/lib/jvm/jre
+    Environment=CATALINA_HOME=/usr/local/tomcat8
+    Environment=CATALINE_BASE=/usr/local/tomcat8
+    ExecStart=/usr/local/tomcat8/bin/catalina.sh run
+    ExecStop=/usr/local/tomcat8/bin/shutdown.sh
+    SyslogIdentifier=tomcat-%i
+    [Install]
+    WantedBy=multi-user.target
+    # systemctl daemon-reload
+    # systemctl start tomcat
+    # systemctl enable tomcat
+
+Enabling the firewall and allowing port 8080 to access the tomcat:
 # systemctl start firewalld
 # systemctl enable firewalld
 # firewall-cmd --get-active-zones
 # firewall-cmd --zone=public --add-port=8080/tcp --permanent
 # firewall-cmd --reload
+
+
 CODE BUILD & DEPLOY (app01)
+===========================
 Download Source code
 # git clone -b local-setup https://github.com/devopshydclub/vprofile-project.git
 Update configuration
 # cd vprofile-project
 # vim src/main/resources/application.properties
 # Update file with backend server details
-Build code
+
+Build code:
 Run below command inside the repository (vprofile-project)
 # mvn install
 Deploy artifact
@@ -221,7 +250,9 @@ Deploy artifact
 # sleep 300
 # chown tomcat.tomcat usr/local/tomcat8/webapps -R
 # systemctl restart tomcat
-NGINX SETUP
+
+NGINX SETUP:
+-----------
 Login to the Nginx vm
 $ vagrant ssh web01
 Verify Hosts entry, if entries missing update the it with IP and hostnames
@@ -231,20 +262,22 @@ Update OS with latest patches
 # apt upgrade
 Install nginx
 # apt install nginx -y
-Create Nginx conf file with below content
+
+Create Nginx conf file with below content;
 # vi /etc/nginx/sites-available/vproapp
-upstream vproapp {
-server app01:8080;
-}
-server {
-listen 80;
-location / {
-proxy_pass http://vproapp;
-}
-}
+    upstream vproapp {
+    server app01:8080;
+    }i
+    server {
+    listen 80;
+    location / {
+    proxy_pass http://vproapp;
+    }
 Remove default nginx conf
 # rm -rf /etc/nginx/sites-enabled/default
+
 Create link to activate website
 # ln -s /etc/nginx/sites-available/vproapp /etc/nginx/sites-enabled/vproapp
+
 Restart Nginx
 # systemctl restart nginx
